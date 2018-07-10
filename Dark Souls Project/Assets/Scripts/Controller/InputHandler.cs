@@ -4,105 +4,116 @@ using UnityEngine;
 
 public class InputHandler : MonoBehaviour {
 
+    public GamePhase curPhase;
+    public StatesManager states;
+    public CameraManager camManager;
+
+    Transform camTrans;
+
+    float b_timer;
+    float delta;
+
     float vertical;
     float horizontal;
 
-    // attack buttons
-    public bool key1, key2, LMB, RMB;
+    bool b_input; //space_input
+    bool a_input; // f_input
+    bool x_input; // x_input  
+    bool y_input; // leftAlt_input
+    bool rb_input; // LMB_input
+    bool rt_input; // RMB_input
+    bool lb_input; // leftShift_input
+    bool lt_input; //tab_input
 
-    // other buttons
-    public bool space_key, G_key, leftShift, leftAlt;
-
-    StateManager states;
-    CameraManager camManager;
-
-
-    void Start ()
+    private void Start()
     {
-        states = GetComponent<StateManager>();
-        states.Init();
-        camManager = CameraManager.singleton;
-        camManager.Init(transform);
-	}
+        InGame_Initialize();
+    }
+    public void InGame_Initialize()
+    {
+        states.Initialize();
+        camManager.Initialize(states);
+        camTrans = camManager._transform;
+    }
+    void FixedUpdate()
+    {
+        delta += Time.deltaTime;
+        GetInput_FixedUpdate();
 
+        switch(curPhase)
+        {
+            case GamePhase.inGame:
+                InGame_UpdateStates_FixedUpdate();
+                states.FixedTick(delta);
+                camManager.FixedTick(delta);
+                break;
+            case GamePhase.inMenu:
+                break;
+            case GamePhase.inInventory:
+                break;
+            default:
+                break;
+        }
+    }
     void Update()
     {
-        states.Tick();
-        GetInput();
-        UpdateStates();
-    }
-    void FixedUpdate ()
-    {
-        states.FixedTick();
-        camManager.FixedTick();
-    }
+        delta += Time.deltaTime;
+        GetInput_Update();
 
-    void UpdateStates()
-    {
-        states.horizontal = horizontal;
-        states.vertical = vertical;
-
-        // set move direction to the direction the camera is facing
-        Vector3 v = vertical * camManager.transform.forward;
-        Vector3 h = horizontal * camManager.transform.right;
-        states.moveDir = (v + h).normalized;
-
-        // set move amount
-        float m = Mathf.Abs(horizontal) + Mathf.Abs(vertical);
-        states.moveAmount = Mathf.Clamp01(m);
-
-        // set roll state
-        states.rollInput = space_key;
-        
-        // set run state
-        states.runToggle = leftShift;
-
-        // states.attack1 = LMB;
-        // etc.
-
-        //toggle 2h
-        if (leftAlt)
+        switch (curPhase)
         {
-            states.isTwoHanded = !states.isTwoHanded;
-            states.HandleTwoHanded();
+            case GamePhase.inGame:
+                InGame_UpdateStates_Update();
+                states.Tick(delta);                
+                break;
+            case GamePhase.inMenu:
+                break;
+            case GamePhase.inInventory:
+                break;
+            default:
+                break;
         }
-
-        // toggle for lockon
-        if(G_key)
-        {
-            states.lockOn = !states.lockOn;
-
-            if (!states.lockonTarget)
-                states.lockOn = false;
-
-            camManager.lockonTarget = states.lockonTarget.transform;
-            camManager.lockOn = states.lockOn;
-        }
-
-
     }
 
-    void GetInput()
+    void GetInput_FixedUpdate()
     {
-        // movement input
-        vertical = Input.GetAxis("Vertical");
-        horizontal = Input.GetAxis("Horizontal");
+        vertical = Input.GetAxis(StaticStrings.Vertical);
+        horizontal = Input.GetAxis(StaticStrings.Horizontal);
+    }
+    void GetInput_Update()
+    {
+        b_input = Input.GetButton(StaticStrings.B);
+        a_input = Input.GetButtonUp(StaticStrings.A);
+        x_input = Input.GetButtonUp(StaticStrings.X);
+        y_input = Input.GetButton(StaticStrings.Y);
 
-        // attack input   
-        LMB = Input.GetKeyDown(KeyCode.Mouse0);
-        RMB = Input.GetKeyDown(KeyCode.Mouse1);
-        key1 = Input.GetKeyDown(KeyCode.Alpha1);
-        key2 = Input.GetKeyDown(KeyCode.Alpha2);
+        rt_input = Input.GetButton(StaticStrings.RT);
+        lt_input = Input.GetButton(StaticStrings.LT);
+        rb_input = Input.GetButton(StaticStrings.RB);
+        lb_input = Input.GetButton(StaticStrings.LB);
 
-        // other input
-        leftShift = Input.GetKey(KeyCode.LeftShift);
-
-        leftAlt = Input.GetKeyDown(KeyCode.LeftAlt);      
-        G_key = Input.GetKeyDown(KeyCode.G);
-        space_key = Input.GetKeyDown(KeyCode.Space);
-
+        if (b_input)
+            b_timer += delta;
     }
 
+    void InGame_UpdateStates_FixedUpdate()
+    {
+        states.input.vertical = vertical;
+        states.input.horizontal = horizontal;
+        states.input.moveAmount = Mathf.Clamp01(Mathf.Abs(vertical) + Mathf.Abs(horizontal));
 
-  
+        Vector3 moveDir = camTrans.forward * vertical;
+        moveDir += camTrans.right * horizontal;
+        moveDir.Normalize();
+        states.input.moveDir = moveDir;
+    }
+    void InGame_UpdateStates_Update()
+    {
+
+    }
+}
+
+public enum GamePhase
+{
+    inGame, inMenu, inInventory
 }
